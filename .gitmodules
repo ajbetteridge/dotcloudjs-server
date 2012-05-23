@@ -1,0 +1,3 @@
+[submodule "lib/node-mongodb-wrapper"]
+	path = lib/node-mongodb-wrapper
+	url = git@github.com:shin-/node-mongodb-wrapper.git
