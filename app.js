@@ -61,7 +61,7 @@ for (var i = 0; i < submodules.length; i++) {
 }
 
 app.get('/version', function(req, res) {
-    res.send('0.71');
+    res.send('0.73');
 });
 
 app.listen(env.PORT_WWW || 12864);

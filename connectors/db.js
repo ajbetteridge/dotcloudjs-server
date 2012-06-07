@@ -102,10 +102,10 @@ module.exports = function(app, connection) {
 
     app.post('/rpc/newdb', function(req, res) {
         var stackid = req.param('stackid', null);
-        if (stackid === connection.stackid) {
+        if (stackid === connection.stackid && (stackid !== '_private')) {
             res.send({ result: { id: stackid}});
         } else {
-            error(res, "Unauthorized stackid: " + stackid, true);
+            error(res, "Unauthorized stackid: " + stackid, true, 403);
         }
     });
 
