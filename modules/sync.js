@@ -1,10 +1,12 @@
-module.exports = function(app, mongo, redisUrl) {
+module.exports = function(mongo, redisUrl) {
     var io = require('stack.io')({
         transport: redisUrl
     }),
         redis = require('redis'),
         url = require('url'),
-        _ = require('underscore');
+        _ = require('underscore'),
+        evts = require('events'),
+        syncEvts = new evts.EventEmitter();
 
     var parsedUrl = redisUrl? url.parse(redisUrl) : {};
 
@@ -17,8 +19,8 @@ module.exports = function(app, mongo, redisUrl) {
         return dbid + '.' + collection;
     };
 
-    var db = function(ns) {
-        return mongo.operations.collection(mongo.public(), ns);
+    var db = function(ns, callback) {
+        mongo.operations.collection('public', ns, callback);
     };
 
     io.expose('sync-redis', {
@@ -29,7 +31,7 @@ module.exports = function(app, mongo, redisUrl) {
                     console.error(err);
                     return cb([err]);
                 }
-                io.emit('inserted-' + ns, object, 'push');
+                syncEvts.emit('inserted-' + ns, object, 'push');
                 cb([null, data]);
             };
             var rpushArgs;
@@ -54,7 +56,7 @@ module.exports = function(app, mongo, redisUrl) {
                     return cb([err]);
                 }
                 var obj = JSON.parse(data);
-                io.emit('removed-' + ns, obj, 'pop');
+                syncEvts.emit('removed-' + ns, obj, 'pop');
                 cb([null, obj]);
             });
             
@@ -67,7 +69,7 @@ module.exports = function(app, mongo, redisUrl) {
                     return cb([err]);
                 }
                 var obj = JSON.parse(data);
-                io.emit('removed-' + ns, obj, 'shift');
+                syncEvts.emit('removed-' + ns, obj, 'shift');
                 cb([null, obj]);
             });
         },
@@ -78,7 +80,7 @@ module.exports = function(app, mongo, redisUrl) {
                     console.error(err);
                     return cb([err]);
                 }
-                io.emit('inserted-' + ns, object, 'unshift');
+                syncEvts.emit('inserted-' + ns, object, 'unshift');
                 cb([null, data]);
             };
             var lpushArgs;
@@ -118,7 +120,7 @@ module.exports = function(app, mongo, redisUrl) {
                             return cb([err]);
                         }
                         cb([null, results]);
-                        io.emit('spliced-' + ns, idx, num, objects);
+                        syncEvts.emit('spliced-' + ns, idx, num, objects);
                     });
                 });
             }
@@ -141,14 +143,58 @@ module.exports = function(app, mongo, redisUrl) {
                     console.error(err);
                     return cb([err]);
                 }
-                cb([null, _.map(data, function(item) {
-                    try {
-                        return JSON.parse(item);
-                    } catch (e) {
-                        console.error('JSON parse error', e, item);
-                        return '';
-                    }
-                })]);
+                cb([null, {
+                    data: _.map(data, function(item) {
+                            try {
+                                return JSON.parse(item);
+                            } catch (e) {
+                                console.error('JSON parse error', e, item);
+                                return '';
+                            }
+                        }),
+                    type: 'synchronized'
+                }], true);
+
+                syncEvts.on('spliced-' + ns, function(idx, num, objects) {
+                    cb([null, {
+                        type: 'spliced',
+                        data: {
+                            index: idx,
+                            num: num,
+                            objects: objects
+                        }
+                    }], true);
+                });
+
+                syncEvts.on('removed-' + ns, function(obj, op) {
+                    cb([null, {
+                        type: 'removed',
+                        data: {
+                            object: obj,
+                            operation: op
+                        }
+                    }], true)
+                });
+
+                syncEvts.on('inserted-' + ns, function(obj, op) {
+                    cb([null, {
+                        type: 'inserted',
+                        data: {
+                            object: obj,
+                            operation: op
+                        }
+                    }], true);
+                });
+
+                syncEvts.on('updated-' + ns, function(idx, obj) {
+                    cb([null, {
+                        type: 'updated',
+                        data: {
+                            index: idx,
+                            object: obj
+                        }
+                    }], true);
+                });
             });
         },
 
@@ -160,68 +206,122 @@ module.exports = function(app, mongo, redisUrl) {
                     return cb([err]);
                 }
                 cb([null, data]);
-                io.emit('updated-' + ns, index, obj);
+                syncEvts.emit('updated-' + ns, index, obj);
             });
         }
     });
 
     io.expose('sync', {
         add: function(dbid, collection, object, cb) {
-            var c = db(ns(dbid, collection));
-            // above method already treats Array inserts as inserting each 
-            // element of the array.
-            mongo.operations.insert(c, object, function(err, data) {
-                cb([err, data]);
-                if (!err) {
-                    io.emit('inserted-' + ns(dbid, collection), data);
-                } else {
+            console.log('Add...')
+            db(ns(dbid, collection), function(err, c) {
+                console.log('collection', err)
+                if (err) {
                     console.error(err);
+                    return cb([err, null]);
                 }
+                // method below already treats Array inserts as inserting each
+                // element of the array.
+                console.log('Will insert ', object);
+                mongo.operations.insert(c, object, function(err, data) {
+                    cb([err, data]);
+                    if (!err) {
+                        console.log('Emitting event');
+                        syncEvts.emit('inserted-' + ns(dbid, collection), data);
+                    } else {
+                        console.error(err);
+                    }
+                });
             });
         },
         remove: function(dbid, collection, id, cb) {
-            var c = db(ns(dbid, collection));
             var callback = function(err, data) {
                 if (err) {
                     console.error(err);
                     return cb([err]);
                 }
                 if (id) 
-                    io.emit('removed-' + ns(dbid, collection), id);
+                    syncEvts.emit('removed-' + ns(dbid, collection), id);
                 else
-                    io.emit('removedall-' + ns(dbid, collection));
+                    syncEvts.emit('removedall-' + ns(dbid, collection));
                 return cb([null, data]);
             };
-            if (id)
-                mongo.operations.removeById(c, id, callback);
-            else
-                mongo.operations.removeAll(c, callback);
+
+            db(ns(dbid, collection), function(err, c) {
+                if (err) {
+                    console.erorr(err);
+                    return cb([err, null]);
+                }
+
+                if (id)
+                    mongo.operations.removeById(c, id, callback);
+                else
+                    mongo.operations.removeAll(c, callback);
+
+            });
         },
 
         retrieve: function(dbid, collection, cb) {
-            var c = db(ns(dbid, collection));
-            mongo.operations.findAll(c, function(err, data) {
-               if (err) {
-                    console.error(err);
+            db(ns(dbid, collection), function(err, c) {
+                if (err) {
+                    console.log(err);
+                    return cb([err]);
                 }
 
-               cb([err, data]);
+                mongo.operations.findAll(c, function(err, data) {
+                    if (err) {
+                        console.error(err);
+                    }
+
+                    syncEvts.on('removed-' + ns(dbid, collection), function(id) {
+                        cb([null, {
+                            type: 'removed',
+                            data: id
+                        }], true);
+                    });
+
+                    syncEvts.on('removedall-' + ns(dbid, collection), function() {
+                        cb([null, {
+                            type: 'removed-all'
+                        }], true);
+                    });
+
+                    syncEvts.on('inserted-' + ns(dbid, collection), function(data) {
+                        console.log('inserted callback');
+                        cb([null, {
+                            type: 'inserted',
+                            data: data
+                        }], true);
+                    });
+
+                    syncEvts.on('updated-' + ns(dbid, collection), function(data) {
+                        cb([null, {
+                            type: 'updated',
+                            data: data
+                        }], true);
+                    });
+
+                   cb([err, { type: 'synchronized', data: data }], true);
+                });
             });
         },
 
         update: function(dbid, collection, id, changes, cb) {
-            var c = db(ns(dbid, collection));
-            var callback = function(err, data) {
+            db(ns(dbid, collection), function(err, c) {
                 if (err) {
-                    console.error(err);
+                    console.log(err);
                     return cb([err]);
                 }
-                io.emit('updated-' + ns(dbid, collection), data);
-                return cb([null, data]);
-            };
-            mongo.operations.updateById(c, id, changes, callback);
+                var callback = function(err, data) {
+                    if (err) {
+                        console.error(err);
+                        return cb([err]);
+                    }
+                    syncEvts.emit('updated-' + ns(dbid, collection), data);
+                    return cb([null, data]);
+                };
+                mongo.operations.updateById(c, id, changes, callback);
+            });
         }
     });
-
-    io.browser(app);
 };

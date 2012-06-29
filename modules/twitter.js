@@ -1,4 +1,4 @@
-module.exports = function(app, mongo, redisUrl) {
+module.exports = function(mongo, redisUrl) {
     var twitter = require('../connectors/twitter'),
         io = require('stack.io')({
             transport: redisUrl
@@ -8,7 +8,7 @@ module.exports = function(app, mongo, redisUrl) {
 
     var isId = function(x) {
         return (typeof x == 'number') || (/^[0-9]+$/.test(x));
-    }
+    };
 
     var insertUserInParams = function(user, params, prefix) {
         params = params || {};
@@ -28,7 +28,7 @@ module.exports = function(app, mongo, redisUrl) {
             params[(prefix || '') + 'screen_name'] = user;
         }
         return params;
-    }
+    };
 
     var appService = function(twitterApp) {
         return {
@@ -36,11 +36,11 @@ module.exports = function(app, mongo, redisUrl) {
             // ### Timelines
             timeline: function(auth, type, params, cb) {
                 if (typeof type == 'function') {
-                    params = null, cb = type;
+                    params = null; cb = type;
                 } else if (typeof type == 'object' && typeof params == 'function') {
-                    cb = params, params = type;
+                    cb = params; params = type;
                 } else if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 if (type == 'user') {
@@ -54,7 +54,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             retweetsTimeline: function(auth, type, user, params, cb) {
                 if (typeof user == 'object' && typeof params == 'function') {
-                    cb = params, params = user;
+                    cb = params; params = user;
                 } else {
                     params = insertUserInParams(user, params);
                 }
@@ -93,13 +93,13 @@ module.exports = function(app, mongo, redisUrl) {
 
             // ### Direct messages
             receivedDMs: function(auth, params, cb) {
-                twitterApp,get('/direct_messages.json', params, auth, cb);
+                twitterApp.get('/direct_messages.json', params, auth, cb);
             },
             sentDMs: function(auth, params, cb) {
-                twitterApp,get('/direct_messages/sent.json', params, auth, cb);
+                twitterApp.get('/direct_messages/sent.json', params, auth, cb);
             },
             destroyDM: function(auth, id, cb) {
-                twitterApp,post('/direct_messages/destroy/' + id + '.json', params, auth, cb);
+                twitterApp.post('/direct_messages/destroy/' + id + '.json', null, auth, cb);
             },
             newDM: function(auth, user, text, cb) {
                 var params = insertUserInParams(user, { text: text });
@@ -112,7 +112,7 @@ module.exports = function(app, mongo, redisUrl) {
             // ### Friends/followers
             followers: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 params = params || {};
@@ -122,7 +122,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             friends: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 params = params || {};
@@ -148,12 +148,14 @@ module.exports = function(app, mongo, redisUrl) {
                 twitterApp.get('/friendships/exists.json', params, auth, cb);
             },
             friendshipsIn: function(auth, params, cb) {
-                twitterApp.get('/friendships/incoming.json', null, auth, cb);
+                twitterApp.get('/friendships/incoming.json', params, auth, cb);
             },
             friendshipsOut: function(auth, params, cb) {
-                twitterApp.get('/friendships/outgoing.json', null, auth, cb);
+                twitterApp.get('/friendships/outgoing.json', params, auth, cb);
             },
             showFriendship: function(auth, source, target, cb) {
+                var params = insertUserInParams(source, {}, 'source_');
+                params = insertUserInParams(target, params, 'target_');
                 twitterApp.get('/friendships/show.json', params, auth, cb);
             },
             createFriendship: function(auth, user, follow, cb) {
@@ -173,7 +175,7 @@ module.exports = function(app, mongo, redisUrl) {
                 }
 
                 var ids = (isId(users[0]));
-                var users = users.join(',');
+                users = users.join(',');
                 twitterApp.get('/friendships/lookup.json', { 
                     user_id: ids? users : undefined,
                     screen_name: ids? undefined: users
@@ -198,7 +200,7 @@ module.exports = function(app, mongo, redisUrl) {
                 }
 
                 var ids = isId(users[0]);
-                var users = users.join(',');
+                users = users.join(',');
                 twitterApp.get('/users/lookup.json', { 
                     user_id: ids? users : undefined,
                     screen_name: ids? undefined: users
@@ -222,19 +224,19 @@ module.exports = function(app, mongo, redisUrl) {
             },
             suggestionCategories: function(auth, lang, cb) {
                 if (typeof lang == 'function') {
-                    cb = lang, lang = undefined;
+                    cb = lang; lang = undefined;
                 }
                 twitterApp.get('/users/suggestions.json', { lang: lang }, auth, cb);
             },
             suggestions: function(auth, slug, members, lang, cb) {
                 if (typeof lang == 'function') {
                     if (members === true || members === false) {
-                        cb = lang, lang = undefined;
+                        cb = lang; lang = undefined;
                     } else {
-                        cb = lang, lang = members, members = false;
+                        cb = lang; lang = members; members = false;
                     }
                 } else if (typeof members == 'function') {
-                    cb = members, members = undefined;
+                    cb = members; members = undefined;
                 }
 
                 twitterApp.get('/users/suggestions/' + slug + 
@@ -246,12 +248,12 @@ module.exports = function(app, mongo, redisUrl) {
             blocking: function(auth, params, ids, cb) {
                 if (typeof ids === 'function') {
                     if (params === true || params === false) {
-                        cb = ids, ids = params, params = {};
+                        cb = ids; ids = params; params = {};
                     } else {
-                        cb = ids, ids = false;
+                        cb = ids; ids = false;
                     }
                 } else if (typeof params == 'function') {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
 
                 if (!ids) {
@@ -263,7 +265,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             isBlocked: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 params = insertUserInParams(user, params);
@@ -271,7 +273,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             createBlock: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 params = insertUserInParams(user, params);
@@ -279,7 +281,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             destroyBlock: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 params = insertUserInParams(user, params);
@@ -292,7 +294,7 @@ module.exports = function(app, mongo, redisUrl) {
                 if (user == 'me') {
                     user = null;
                 } else if ((typeof params == 'function') && (userType == 'object')) {
-                    cb = params, params = user;
+                    cb = params; params = user;
                 } else {
                     insertUserInParams(user, params);
                 }
@@ -309,7 +311,7 @@ module.exports = function(app, mongo, redisUrl) {
             // ### Lists
             allLists: function(auth, user, cb) {
                 if (typeof user == 'function') {
-                    cb = user, user = null;
+                    cb = user; user = null;
                 }
 
                 twitterApp.get('/lists/all.json', insertUserInParams(user), cb);
@@ -318,13 +320,13 @@ module.exports = function(app, mongo, redisUrl) {
             listStatuses: function(auth, list, owner, params, cb) {
                 var listId = isId(list);
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 } else if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
 
                 if (listId && typeof owner == 'object') {
-                    params = owner, owner = null;
+                    params = owner; owner = null;
                 }
 
                 params = insertUserInParams(owner, params, 'owner_');
@@ -335,7 +337,7 @@ module.exports = function(app, mongo, redisUrl) {
 
             listSubscriptions: function(auth, user, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
                 params = insertUserInParams(user, params);
                 twitterApp.get('/lists/subscriptions.json', params, auth, cb);
@@ -344,13 +346,13 @@ module.exports = function(app, mongo, redisUrl) {
             listSubscribers: function(auth, list, owner, params, cb) {
                 var listId = isId(list);
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 } else if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
 
                 if (listId && typeof owner == 'object') {
-                    params = owner, owner = null;
+                    params = owner; owner = null;
                 }
 
                 params = insertUserInParams(owner, params, 'owner_');
@@ -362,9 +364,9 @@ module.exports = function(app, mongo, redisUrl) {
             listSubscribe: function(auth, list, owner, cb) {
                 var listId = isId(list);
                 if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
-                params = insertUserInParams(owner, params, 'owner_');
+                var params = insertUserInParams(owner, {}, 'owner_');
                 params.list_id = listId ? list : null;
                 params.slug = listId ? null : list;
                 twitterApp.post('/lists/subscribers/create.json', params, auth, cb);
@@ -373,9 +375,9 @@ module.exports = function(app, mongo, redisUrl) {
             isListSubscriber: function(auth, list, owner, user, params, cb) {
                 var listId = isId(list);
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 } else if (listId && typeof user == 'function') {
-                    cb = user, user = owner, owner = null;
+                    cb = user; user = owner; owner = null;
                 }
 
                 params = insertUserInParams(owner, params, 'owner_');
@@ -388,10 +390,10 @@ module.exports = function(app, mongo, redisUrl) {
             listUnsubscribe: function(auth, list, owner, cb) {
                 var listId = isId(list);
                 if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
 
-                params = insertUserInParams(owner, params, 'owner_');
+                var params = insertUserInParams(owner, {}, 'owner_');
                 params.list_id = listId ? list : null;
                 params.slug = listId ? null : list;
                 twitterApp.post('/lists/subscribers/destroy.json', params, auth, cb);
@@ -399,11 +401,11 @@ module.exports = function(app, mongo, redisUrl) {
 
             listMemberships: function(auth, user, params, cb) {
                 if (typeof user == 'function') {
-                    cb = user, user = null;
+                    cb = user; user = null;
                 } else if (typeof params == 'function') {
                     cb = params;
                     if (typeof user == 'object') {
-                        params = user, user = null;
+                        params = user; user = null;
                     } else {
                         params = null;
                     }
@@ -416,13 +418,13 @@ module.exports = function(app, mongo, redisUrl) {
             listMembers: function(auth, list, owner, params, cb) {
                 var listId = isId(list);
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 } else if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
 
                 if (listId && typeof owner == 'object') {
-                    params = owner, owner = null;
+                    params = owner; owner = null;
                 }
 
                 params = insertUserInParams(owner, params, 'owner_');
@@ -432,9 +434,10 @@ module.exports = function(app, mongo, redisUrl) {
             },
 
             addMember: function(auth, list, owner, user, cb) {
-                var listId = isId(list);
+                var listId = isId(list),
+                    params = {};
                 if (listId && typeof user == 'function') {
-                    cb = user, user = owner, owner = null;
+                    cb = user; user = owner; owner = null;
                 }
 
                 if (Array.isArray(user)) {
@@ -457,9 +460,9 @@ module.exports = function(app, mongo, redisUrl) {
             isListMember: function(auth, list, owner, user, params, cb) {
                 var listId = isId(list);
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 } else if (listId && typeof user == 'function') {
-                    cb = user, user = owner, owner = null;
+                    cb = user; user = owner; owner = null;
                 }
 
                 params = insertUserInParams(owner, params, 'owner_');
@@ -470,9 +473,10 @@ module.exports = function(app, mongo, redisUrl) {
             },
 
             removeListMember: function(auth, list, owner, user, cb) {
-                var listId = isId(list);
+                var listId = isId(list),
+                    params = {};
                 if (listId && typeof user == 'function') {
-                    cb = user, user = owner, owner = null;
+                    cb = user; user = owner; owner = null;
                 }
 
                 if (Array.isArray(user)) {
@@ -494,12 +498,12 @@ module.exports = function(app, mongo, redisUrl) {
 
             createList: function(auth, name, mode, desc, cb) {
                 if (typeof desc == 'function') {
-                    cb = desc, desc = null;
+                    cb = desc; desc = null;
                     if (mode != 'private' && mode != 'public') {
-                        desc = mode, mode = null;
+                        desc = mode; mode = null;
                     }
                 } else if (typeof mode == 'function') {
-                    cb = mode, mode = null;
+                    cb = mode; mode = null;
                 }
 
                 var params = {
@@ -514,7 +518,7 @@ module.exports = function(app, mongo, redisUrl) {
             destroyList: function(auth, list, owner, cb) {
                 var listId = isId(list);
                 if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null; 
+                    cb = owner; owner = null; 
                 }
 
                 var params = {
@@ -528,18 +532,18 @@ module.exports = function(app, mongo, redisUrl) {
             updateList: function(auth, list, owner, update, cb) {
                 var listId = isId(list);
                 if (listId && typeof update == 'function') {
-                    cb = update, update = owner, owner = null;
+                    cb = update; update = owner; owner = null;
                 }
 
                 update = insertUserInParams(owner, update, 'owner_');
                 update.list_id = listId ? list : null;
-                update.slug = listId ? null : slug;
+                update.slug = listId ? null : list;
                 twitterApp.post('/lists/update.json', update, auth, cb);
             },
 
             lists: function(auth, user, cursor, cb) {
                 if (typeof cursor == 'function') {
-                    cb = cursor, cursor = null;
+                    cb = cursor; cursor = null;
                 }
                 var params = insertUserInParams(user, { cursor : cursor });
 
@@ -549,7 +553,7 @@ module.exports = function(app, mongo, redisUrl) {
             showList: function(auth, list, owner, cb) {
                 var listId = isId(list);
                 if (listId && typeof owner == 'function') {
-                    cb = owner, owner = null;
+                    cb = owner; owner = null;
                 }
 
                 var params = insertUserInParams(owner, null, 'owner_');
@@ -579,7 +583,7 @@ module.exports = function(app, mongo, redisUrl) {
                     if (typeof image == 'string') {
                         params = {};
                     } else {
-                        params = image, image = undefined;
+                        params = image; image = undefined;
                     }
                 }
                 params.image = image;
@@ -588,7 +592,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             updateProfileImg: function(auth, image, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
                 params.image = image;
 
@@ -638,21 +642,21 @@ module.exports = function(app, mongo, redisUrl) {
             },
             reverseGeocode: function(auth, latitude, longitude, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
 
-                params.lat = latitude, params['long'] = longitude;
+                params.lat = latitude; params.long = longitude;
                 twitterApp.get('/geo/reverse_geocode.json', params, auth, cb);
             },
             searchGeo: function(auth, query, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
 
                 if (/([0-2]?[0-9]{1,2}\.){3}[0-2]?[0-9]{1,2}/.test(query)) {
                     params.ip = query;
                 } else if (query.latitude && query.longitude) {
-                    params.lat = query.latitude, params['long'] = query.longitude;
+                    params.lat = query.latitude; params.long = query.longitude;
                 } else {
                     params.query = query;
                 }
@@ -661,11 +665,11 @@ module.exports = function(app, mongo, redisUrl) {
             },
             similarPlaces: function(auth, latitude, longitude, name, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
 
-                params.lat = latitude, 
-                params['long'] = longitude, 
+                params.lat = latitude;
+                params.long = longitude;
                 params.name = name;
 
                 twitterApp.get('/geo/similar_places.json', params, auth, cb);
@@ -677,14 +681,14 @@ module.exports = function(app, mongo, redisUrl) {
             // ### Trends
             trends: function(auth, woeid, exclude, cb) {
                 if (typeof exclude == 'function') {
-                    cb = exclude, exclude = null;
+                    cb = exclude; exclude = null;
                 }
 
                 twitterApp.get('/trends/' + woeid + '.json', { exclude: exclude }, auth, cb);
             },
             availableTrends: function(auth, latitude, longitude, cb) {
                 if (typeof latitude == 'function') {
-                    cb = latitude, latitude = null;
+                    cb = latitude; latitude = null;
                 }
 
                 twitterApp.get('/trends/available.json',
@@ -692,14 +696,14 @@ module.exports = function(app, mongo, redisUrl) {
             },
             dailyTrends: function(auth, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 twitterApp.get('/trends/daily.json', params, auth, cb);
             },
             weeklyTrends: function(auth, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 twitterApp.get('/trends/weekly.json', params, auth, cb);
@@ -724,7 +728,7 @@ module.exports = function(app, mongo, redisUrl) {
             // ## Streaming API
             sampleStream: function(auth, params, cb) {
                 if (typeof params == 'function') {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
 
                 twitterApp.stream('statuses/sample', params, auth, function(stream) {
@@ -742,7 +746,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             firehose: function(auth, params, cb) {
                 if (!cb && (typeof params == 'function')) {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
                 twitterApp.stream('statuses/firehose', params, auth, function(stream) {
                     stream.on('data', function(d) {
@@ -752,7 +756,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             siteStream: function(auth, follow, params, cb) {
                 if (!cb && (typeof params == 'function')) {
-                    cb = params, params = {};
+                    cb = params; params = {};
                 }
                 params.follow = follow;
                 twitterApp.stream('site', params, auth, function(stream) {
@@ -763,7 +767,7 @@ module.exports = function(app, mongo, redisUrl) {
             },
             userStream: function(auth, params, cb) {
                 if (!cb && (typeof params == 'function')) {
-                    cb = params, params = null;
+                    cb = params; params = null;
                 }
                 twitterApp.stream('user', params, auth, function(stream) {
                     stream.on('data', function(d) {
@@ -816,88 +820,107 @@ module.exports = function(app, mongo, redisUrl) {
 
     var service = {
         init: function(key, secret, token, cb) {
+            if (typeof cb != 'function') {
+                console.error("Twitter#init ERROR: callback is not a function. Arguments: ", arguments);
+                return;
+            }
+
             if (registrar['twitter-' + key])
                 return cb('twitter-' + key);
-            var collection = mongo.operations.collection(mongo.public(), '_private.twitter');
+            mongo.operations.collection('public', '_private.twitter', function(err, collection) {
 
-            if (!secret) {
-                return mongo.operations.query(collection, { key: key }, function(error, data) {
+                if (err) {
+                    return cb({ error: err });
+                }
+
+                if (!secret) {
+                    return mongo.operations.query(collection, { key: key }, function(error, data) {
+                        if (error) {
+                            return cb({ error: error });
+                        } else if (!data || data.length === 0 || !data[0].secret) {
+                            return cb({ error: 'Application was never registered. Please call init once providing your consumer secret.' });
+                        }
+
+                        io.expose('twitter-' + key, appService(twitter({
+                            consumer_key: key,
+                            consumer_secret: data[0].secret,
+                            access_token_key: token? token.key : null,
+                            access_token_secret: token? token.secret: null
+                        })));
+                        registrar['twitter-' + key] = true;
+                        return cb('twitter-' + key);
+                    });
+                }
+
+                mongo.operations.query(collection, { key: key }, function(error, data) {
                     if (error) {
-                        return cb({ error: error });
-                    } else if (!data || data.length === 0 || !data[0].secret) {
-                        return cb({ error: 'Application was never registered. Please call init once providing your consumer secret.' });
+                        return cb({ error : error });
+                    } else if (!data || data.length === 0) {
+                        mongo.operations.insert(collection, { key: key, secret: secret }, function() {});
+                    } else if (!data[0].secret) {
+                        mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {});
                     }
 
                     io.expose('twitter-' + key, appService(twitter({
                         consumer_key: key,
-                        consumer_secret: data[0].secret,
-                        access_token_key: token? token.key : null,
-                        access_token_secret: token? token.secret: null
+                        consumer_secret: secret,
+                        access_token_key: token ? token.key : null,
+                        access_token_secret: token ? token.secret : null
                     })));
                     registrar['twitter-' + key] = true;
                     return cb('twitter-' + key);
                 });
+            });
+        },
+
+        twitterCallback: function(req, cb) {
+            /*jshint multistr:true */
+            cb({ msg: '<script type="text/javascript">\
+                window.opener.postMessage(\'{ "token":"' + req.query.oauth_token +
+                '", "verifier":"' + req.query.oauth_verifier + '"}\', "*");\
+                window.close();</script>' });
+        },
+        setKeys: function(req, cb) {
+            var secret = req.body.secret,
+                key = req.body.key,
+                old = req.body.old_secret;
+
+            if (!secret || !key) {
+                return cb({
+                    msg: 'You must provide a "key" parameter and a "secret" parameter.\n', 
+                    code: 400
+                });
             }
 
-            mongo.operations.query(collection, { key: key }, function(error, data) {
-                if (error) {
-                    return cb({ error : error });
-                } else if (!data || data.length === 0) {
-                    mongo.operations.insert(collection, { key: key, secret: secret }, function() {});
-                } else if (!data[0].secret) {
-                    mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {});
+            mongo.operations.collection('public', '_private.twitter', function(err, collection) {
+                if (err) {
+                    return cb({ msg: err, code: 500 });
                 }
 
-                io.expose('twitter-' + key, appService(twitter({
-                    consumer_key: key,
-                    consumer_secret: secret,
-                    access_token_key: token ? token.key : null,
-                    access_token_secret: token ? token.secret : null
-                })));
-                registrar['twitter-' + key] = true;
-                return cb('twitter-' + key);
+                mongo.operations.query(collection, { key: key }, function(err, data) {
+                    if (err) {
+                        cb({msg: err, code: 500 });
+                    } else if (!data || data.length === 0) {
+                        mongo.operations.insert(collection, { key: key, secret: secret }, function() {
+                            cb({ msg: 'Application key ' + key + ' successfully registered\n' });
+                        });
+                    } else {
+                        if (data[0].secret != old) {
+                            /*jshint multistr:true */
+                            cb({ msg: 'old_secret parameter doesn\'t match the one currently registered. \
+        If you\'re sure you provided the correct secret, your consumer secret may have \
+        been compromised and you should reset your keys.', code: 403 });
+                        } else {
+                            mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {
+                                cb({ msg: 'Consumer secret has been updated successfully.' });
+                            });
+                        }
+                    }
+                });
             });
+
         }
     };
 
     io.expose('twitter', service);
-
-    app.get('/twitter/callback', function(req, res) {
-        res.send('<script type="text/javascript">\
-            window.opener.postMessage(\'{ "token":"' + req.query.oauth_token +
-            '", "verifier":"' + req.query.oauth_verifier + '"}\', "*");\
-            window.close();</script>');
-
-    });
-
-    app.post('/twitter/set_keys', function(req, res) {
-        var secret = req.param('secret', null),
-            key = req.param('key', null),
-            old = req.param('old_secret', null);
-        var collection = mongo.operations.collection(mongo.public(), '_private.twitter');
-
-        if (!secret || !key) {
-            res.send('You must provide a "key" parameter and a "secret" parameter.\n', 400);
-        }
-
-        mongo.operations.query(collection, { key: key }, function(err, data) {
-            if (err) {
-                res.send(err, 500);
-            } else if (!data || data.length === 0) {
-                mongo.operations.insert(collection, { key: key, secret: secret }, function() {
-                    res.send('Application key ' + key + 'successfully registered\n');
-                });
-            } else {
-                if (data[0].secret != old) {
-                    res.send('old_secret parameter doesn\'t match the one currently registered. \
-If you\'re sure you provided the correct secret, your consumer secret may have \
-been compromised and you should reset your keys.', 403);
-                } else {
-                    mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {
-                        res.send('Consumer secret has been updated successfully.');
-                    });
-                }
-            }
-        })
-    });
 };

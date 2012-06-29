@@ -1,0 +1,19 @@
+{
+    "twitter": {
+        "set_keys": {
+            "method": "post",
+            "procedure": "setKeys"
+        },
+        "callback": {
+            "method": "get",
+            "procedure": "twitterCallback"
+        }
+    },
+
+    "twilio": {
+        "call": {
+            "method": "post",
+            "procedure": "callRoute"
+        }
+    }
+}
