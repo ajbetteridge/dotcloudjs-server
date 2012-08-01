@@ -1,10 +1,11 @@
-var module = process.argv[2];
-
 try {
     var env = JSON.parse(fs.readFileSync('/home/dotcloud/environment.json'));
 } catch (e) {
     env = process.env;
 }
+
+var module = process.argv[2],
+    REGISTRAR_ENDPOINT = env.REGISTRAR_ENDPOINT || 'tcp://127.0.0.1:27615';
 
 // Database configuration
 var dbConfig = {
@@ -16,9 +17,9 @@ var dbConfig = {
 },
     db = require("./connectors/db")(null, dbConfig);
 
-require('./modules/' + module)(db, env.DOTCLOUD_STORE_REDIS_URL);
-
-// Listen to the outside world to avoid dotcloud.js bug
-require('net').createServer(function(socket) {
-    socket.write(module);
-}).listen(env.PORT_WWW || 42800);
+require('stack.io').io({ registrar: REGISTRAR_ENDPOINT }, function(err, io) {
+    if (err) throw err;
+    io.expose(module, env[module.toUpperCase() + '_ENDPOINT'],
+        require('./modules/' + module)(db));
+    console.log('-- Lightweight starter -> module ', module, ' has been started.');
+});

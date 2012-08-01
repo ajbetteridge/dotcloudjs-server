@@ -1,8 +1,5 @@
 module.exports = function(mongo, redisUrl) {
-    var twitter = require('../connectors/twitter'),
-        io = require('stack.io')({
-            transport: redisUrl
-        });
+    var twitter = require('../connectors/twitter');
 
     var registrar = {};
 
@@ -819,6 +816,18 @@ module.exports = function(mongo, redisUrl) {
     };
 
     var service = {
+        transfer: function(service, method, args, callback) {
+            args.push(function(data, stream) {
+                if (data.statusCode && data.statusCode >= 400) {
+                    callback(data, null, stream);
+                } else {
+                    callback(null, data, stream);
+                }
+            });
+
+            registrar[service][method].apply(registrar[service][method], args);
+        },
+
         init: function(key, secret, token, cb) {
             if (typeof cb != 'function') {
                 console.error("Twitter#init ERROR: callback is not a function. Arguments: ", arguments);
@@ -826,7 +835,7 @@ module.exports = function(mongo, redisUrl) {
             }
 
             if (registrar['twitter-' + key])
-                return cb('twitter-' + key);
+                return cb(null, 'twitter-' + key);
             mongo.operations.collection('public', '_private.twitter', function(err, collection) {
 
                 if (err) {
@@ -838,17 +847,17 @@ module.exports = function(mongo, redisUrl) {
                         if (error) {
                             return cb({ error: error });
                         } else if (!data || data.length === 0 || !data[0].secret) {
-                            return cb({ error: 'Application was never registered. Please call init once providing your consumer secret.' });
+                            return cb({ error: 'Application was never registered. Please refer to the docs to set up your application keys.' });
                         }
 
-                        io.expose('twitter-' + key, appService(twitter({
+                        registrar['twitter-' + key] = appService(twitter({
                             consumer_key: key,
                             consumer_secret: data[0].secret,
-                            access_token_key: token? token.key : null,
-                            access_token_secret: token? token.secret: null
-                        })));
-                        registrar['twitter-' + key] = true;
-                        return cb('twitter-' + key);
+                            access_token_key: token ? token.key : null,
+                            access_token_secret: token ? token.secret : null
+                        }));
+
+                        return cb(null, 'twitter-' + key);
                     });
                 }
 
@@ -861,21 +870,21 @@ module.exports = function(mongo, redisUrl) {
                         mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {});
                     }
 
-                    io.expose('twitter-' + key, appService(twitter({
+                    registrar['twitter-' + key] = appService(twitter({
                         consumer_key: key,
                         consumer_secret: secret,
                         access_token_key: token ? token.key : null,
                         access_token_secret: token ? token.secret : null
-                    })));
-                    registrar['twitter-' + key] = true;
-                    return cb('twitter-' + key);
+                    }));
+
+                    return cb(null, 'twitter-' + key);
                 });
             });
         },
 
         twitterCallback: function(req, cb) {
             /*jshint multistr:true */
-            cb({ msg: '<script type="text/javascript">\
+            cb(null, { msg: '<script type="text/javascript">\
                 window.opener.postMessage(\'{ "token":"' + req.query.oauth_token +
                 '", "verifier":"' + req.query.oauth_verifier + '"}\', "*");\
                 window.close();</script>' });
@@ -886,7 +895,7 @@ module.exports = function(mongo, redisUrl) {
                 old = req.body.old_secret;
 
             if (!secret || !key) {
-                return cb({
+                return cb(null, {
                     msg: 'You must provide a "key" parameter and a "secret" parameter.\n', 
                     code: 400
                 });
@@ -894,25 +903,25 @@ module.exports = function(mongo, redisUrl) {
 
             mongo.operations.collection('public', '_private.twitter', function(err, collection) {
                 if (err) {
-                    return cb({ msg: err, code: 500 });
+                    return cb(err);
                 }
 
                 mongo.operations.query(collection, { key: key }, function(err, data) {
                     if (err) {
-                        cb({msg: err, code: 500 });
+                        cb(err);
                     } else if (!data || data.length === 0) {
                         mongo.operations.insert(collection, { key: key, secret: secret }, function() {
-                            cb({ msg: 'Application key ' + key + ' successfully registered\n' });
+                            cb(null, { msg: 'Application key ' + key + ' successfully registered\n' });
                         });
                     } else {
                         if (data[0].secret != old) {
                             /*jshint multistr:true */
-                            cb({ msg: 'old_secret parameter doesn\'t match the one currently registered. \
+                            cb(null, { msg: 'old_secret parameter doesn\'t match the one currently registered. \
         If you\'re sure you provided the correct secret, your consumer secret may have \
         been compromised and you should reset your keys.', code: 403 });
                         } else {
                             mongo.operations.updateById(collection, data[0]._id.toString(), { $set: { secret: secret } }, function() {
-                                cb({ msg: 'Consumer secret has been updated successfully.' });
+                                cb(null, { msg: 'Consumer secret has been updated successfully.' });
                             });
                         }
                     }
@@ -922,5 +931,5 @@ module.exports = function(mongo, redisUrl) {
         }
     };
 
-    io.expose('twitter', service);
+    return service;
 };

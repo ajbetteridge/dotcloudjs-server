@@ -101,16 +101,11 @@ module.exports = function(app, connection) {
             collection.update(conditions, changes, { multi: multi }, cb);
         },
         updateById: function(collection, id, changes, cb) {
-            console.log('update by id...');
             if (changes._id) {
-                console.log('objectID(changes._id)');
                 changes._id = objectID(changes._id);
-                console.log('done');
             }
-            console.log('findAndModify...');
             collection.findAndModify({ _id: objectID(id) }, "_id", 
                 changes, { 'new': true }, cb);
-            console.log('done');
         },
         upsert: function(collection, conditions, obj, cb) {
             if (obj._id) obj._id = objectID(obj._id);

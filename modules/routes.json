@@ -14,6 +14,14 @@
         "call": {
             "method": "post",
             "procedure": "callRoute"
+        },
+        "test/:id": {
+            "method": "get",
+            "procedure": "testRoute"
+        },
+        "setup": {
+            "method":"post",
+            "procedure": "setupRoute"
         }
     }
 }
