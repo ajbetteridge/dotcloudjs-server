@@ -17,7 +17,7 @@ module.exports = function(app, connection) {
                 return callback(err);
             }
             db.authenticate(connection.user, connection.password, function(err) {
-                if (err) 
+                if (err)
                     emitter.emit('error', { db: name, type: 'auth', error: err });
                 callback(err, db);
             });
@@ -42,6 +42,12 @@ module.exports = function(app, connection) {
                     return callback && callback(err);
                 }
                 that._pool[dbid] = database;
+                setTimeout(function() {
+                    delete that._pool[dbid];
+                    pool.get(dbid, function() {
+                        console.log('Refreshed connection for database ', dbid);
+                    })
+                }, 18000000) // Refresh connection every 5 hours
                 callback && callback(null, database);
             })
         },
@@ -63,7 +69,6 @@ module.exports = function(app, connection) {
                     });
                 });
             });
-            
         }
     };
 
@@ -104,7 +109,7 @@ module.exports = function(app, connection) {
             if (changes._id) {
                 changes._id = objectID(changes._id);
             }
-            collection.findAndModify({ _id: objectID(id) }, "_id", 
+            collection.findAndModify({ _id: objectID(id) }, "_id",
                 changes, { 'new': true }, cb);
         },
         upsert: function(collection, conditions, obj, cb) {
@@ -129,7 +134,6 @@ module.exports = function(app, connection) {
             } else {
                 db.collection(collection, cb);
             }
-            
         }
     };
 

@@ -1,6 +1,6 @@
 {
     "name": "dotcloudjs-server",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "private": true,
     "dependencies": {
         "express": "2.5.8",
@@ -14,10 +14,10 @@
         "redis": "0.7.2",
 
         "restler": "2.0.1",
-        "stack.io": "0.2.x",
 
         "oauth": "",
 
-        "request": ""
+        "request": "",
+        "stack.io": "0.2.1"
     }
 }

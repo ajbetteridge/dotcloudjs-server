@@ -32,7 +32,7 @@ io.middleware(/.+/, /twitter-.+/, /.+/, function(req, res, next) {
 //  - Private DB
 io.middleware(/.+/, /db-private/, /.+/, function(req, res, next) {
     if (!req.session.auth) {
-        res.update({ 
+        res.update({
             name: 'AuthenticationError',
             message: 'You must be authenticated to perform this action.'
         }, undefined, false);
@@ -57,6 +57,8 @@ io.middleware(/.+/, /sync-private/, /.+/, function(req, res, next) {
 
     req.args[0] = '_private.' + req.args[0] + '.' + req.session.username;
     req.service = 'sync';
+
+    next();
 });
 
 // Stack.io middlewares
@@ -121,7 +123,7 @@ try {
     for(var i=0; i<publicModules.length; i++) {
         if (publicModules[i].lastIndexOf('.js') === publicModules[i].length - 3)
             require("./public/modules/" + publicModules[i])(app, db, env);
-    }    
+    }
 } catch (e) {
     console.log('No public modules directory');
 }
@@ -179,12 +181,16 @@ stack.io({ registrar: REGISTRAR_ENDPOINT }, function(err, client) {
     // DEM HAXX
     // PLZ FIX STACK.IO CLIENT
     // LOLKTHX
-    setInterval(function() {
+    var interval = setInterval(function() {
         client._updateSvcList(function(err) {
             if (err)
                 console.error(err);
         });
     }, 4000);
+
+    setTimeout(function() {
+        clearInterval(interval);
+    }, 80000);
 
 }).on('error', function(err) {
     console.error(err);
@@ -206,7 +212,7 @@ app.all('/twilio/setup', function(req, res, next) {
 
 // Version endpoint
 app.get('/version', function(req, res) {
-    res.send('0.90b');
+    res.send('0.91');
 });
 
 // stack.io listening

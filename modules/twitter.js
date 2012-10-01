@@ -12,7 +12,7 @@ module.exports = function(mongo, redisUrl) {
 
         if (user === null || user === undefined) {
             return params;
-        } 
+        }
 
         if (user.charAt(0) == '@') {
             params[(prefix || '') + 'screen_name'] = user.substring(1);
@@ -160,20 +160,20 @@ module.exports = function(mongo, redisUrl) {
                 twitterApp.post('/friendships/create.json', params, auth, cb);
             },
             destroyFriendship: function(auth, user, cb) {
-                twitterApp.post('/friendships/destroy.json', insertUserInParams(user), 
+                twitterApp.post('/friendships/destroy.json', insertUserInParams(user),
                     auth, cb);
             },
             lookupFriendships: function(auth, users, cb) {
                 if (!Array.isArray(users) && users.length > 0 && users.length <= 100) {
-                    cb({ 
-                        statusCode: 400, 
-                        data: 'First parameter must be an array of 1-100 user_ids or screen_names' 
+                    cb({
+                        statusCode: 400,
+                        data: 'First parameter must be an array of 1-100 user_ids or screen_names'
                     });
                 }
 
                 var ids = (isId(users[0]));
                 users = users.join(',');
-                twitterApp.get('/friendships/lookup.json', { 
+                twitterApp.get('/friendships/lookup.json', {
                     user_id: ids? users : undefined,
                     screen_name: ids? undefined: users
                 }, auth, cb);
@@ -190,15 +190,15 @@ module.exports = function(mongo, redisUrl) {
             // ### Users
             lookupUsers: function(auth, users, cb) {
                 if (!Array.isArray(users) && users.length > 0 && users.length <= 100) {
-                    cb({ 
-                        statusCode: 400, 
-                        data: 'First parameter must be an array of 1-100 user_ids or screen_names' 
+                    cb({
+                        statusCode: 400,
+                        data: 'First parameter must be an array of 1-100 user_ids or screen_names'
                     });
                 }
 
                 var ids = isId(users[0]);
                 users = users.join(',');
-                twitterApp.get('/users/lookup.json', { 
+                twitterApp.get('/users/lookup.json', {
                     user_id: ids? users : undefined,
                     screen_name: ids? undefined: users
                 }, auth, cb);
@@ -208,7 +208,7 @@ module.exports = function(mongo, redisUrl) {
                 twitterApp.get('/users/search.json', params, auth, cb);
             },
             showUser: function(auth, user, cb) {
-                twitterApp.get('/users/show.json', insertUserInParams(user), 
+                twitterApp.get('/users/show.json', insertUserInParams(user),
                     auth, cb);
             },
             contributees: function(auth, user, params, cb) {
@@ -236,7 +236,7 @@ module.exports = function(mongo, redisUrl) {
                     cb = members; members = undefined;
                 }
 
-                twitterApp.get('/users/suggestions/' + slug + 
+                twitterApp.get('/users/suggestions/' + slug +
                         (members ? '/members.json' : '.json'),
                     { lang : lang }, auth, cb);
             },
@@ -450,7 +450,7 @@ module.exports = function(mongo, redisUrl) {
                 params = insertUserInParams(owner, params, 'owner_');
                 params.list_id = listId ? list : null;
                 params.slug = listId ? null : list;
-                twitterApp.post('/lists/members/create' + 
+                twitterApp.post('/lists/members/create' +
                     (Array.isArray(user) ? '_all.json' : '.json'), params, auth, cb);
             },
 
@@ -489,7 +489,7 @@ module.exports = function(mongo, redisUrl) {
                 params = insertUserInParams(owner, params, 'owner_');
                 params.list_id = listId ? list : null;
                 params.slug = listId ? null : list;
-                twitterApp.post('/lists/members/destroy' + 
+                twitterApp.post('/lists/members/destroy' +
                     (Array.isArray(user) ? '_all.json' : '.json'), params, auth, cb);
             },
 
@@ -515,7 +515,7 @@ module.exports = function(mongo, redisUrl) {
             destroyList: function(auth, list, owner, cb) {
                 var listId = isId(list);
                 if (listId && typeof owner == 'function') {
-                    cb = owner; owner = null; 
+                    cb = owner; owner = null;
                 }
 
                 var params = {
@@ -896,7 +896,7 @@ module.exports = function(mongo, redisUrl) {
 
             if (!secret || !key) {
                 return cb(null, {
-                    msg: 'You must provide a "key" parameter and a "secret" parameter.\n', 
+                    msg: 'You must provide a "key" parameter and a "secret" parameter.\n',
                     code: 400
                 });
             }
